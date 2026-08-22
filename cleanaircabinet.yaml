@@ -5,7 +5,7 @@ esphome:
 esp32:
   board: esp32dev
   framework:
-    type: arduino
+    type: esp-idf
 
 wifi:
   ssid: !secret wifi_ssid
@@ -22,12 +22,10 @@ ota:
 logger:
 
 # --- Fan control (Arctic P8 Max, 4-pin PWM + tach) ---
-# PWM pin: verify 3.3V logic is high enough to trigger the fan's PWM input.
-# If not, add a level shifter (NPN transistor or 74HCT buffer) between
-# GPIO25 and the fan's PWM pin.
+# 3.3V logic on GPIO18 reliably triggers the fan's PWM input, confirmed on breadboard.
 output:
   - platform: ledc
-    pin: GPIO25
+    pin: GPIO18
     id: pwm_output
     frequency: 25000 Hz
 
@@ -42,12 +40,14 @@ fan:
 sensor:
   - platform: pulse_meter
     pin:
-      number: GPIO26
+      number: GPIO19
       mode:
         input: true
         pullup: true
     unit_of_measurement: "RPM"
     name: "Cabinet Fan Speed"
     id: fan_tach
+    accuracy_decimals: 0
     filters:
       - multiply: 0.5
+      - throttle: 10s

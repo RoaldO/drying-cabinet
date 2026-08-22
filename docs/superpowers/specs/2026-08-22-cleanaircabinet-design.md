@@ -18,21 +18,30 @@ ESPHome native API (encrypted, auto-discovery) — geen MQTT-broker nodig.
 - **MCU**: AZDelivery ESP-32 Dev Kit C V4 — ESP32-WROOM-32 module, 512KB RAM.
   ESPHome board type: `esp32dev`.
 - **Fan**: Arctic P8 Max, 4-pin PWM (GND, 12V, PWM-in, Tach-out).
-- **Voeding**: breadboard PSU, 6.5–12V in, 3.3V/5V uit.
+- **Voeding**: gescheiden voedingen i.p.v. gedeelde breadboard PSU (die bleek 15V/9V/5V,
+  geen 12V) — ESP32 op USB, fan op generieke laptopvoeding 12.25V/1A (gemeten, zakt
+  onbelast/belast nauwelijks: 12.25V → 12.22V). GND's van beide voedingen verbonden.
 
 ## Bekabeling
 
 | Signaal | Van | Naar | Opmerking |
 |---|---|---|---|
 | Fan 12V+ / GND | 12V bron | Fan | Rechtstreeks, niet via ESP32 |
-| Fan PWM-in | ESP32 GPIO25 | Fan | LEDC output, 25kHz |
-| Fan Tach-out | Fan | ESP32 GPIO26 | Open-collector, interne pull-up in ESPHome |
-| ESP32 5V/GND | Breadboard PSU 5V-uitgang | ESP32 VIN/5V | |
+| Fan PWM-in | ESP32 GPIO18 | Fan | LEDC output, 25kHz |
+| Fan Tach-out | Fan | ESP32 GPIO19 | Open-collector, interne pull-up in ESPHome |
+| ESP32 | USB | ESP32 | ESP32 en 12V-fanvoeding zijn gescheiden voedingen; GND's onderling verbonden |
 
-**Aanname te verifiëren**: Arctic-fans specificeren het PWM-signaal doorgaans op 5V
-logic; ESP32 GPIO's zijn 3.3V. De meeste fans triggeren nog betrouwbaar op 3.3V high,
-maar dit moet bij de eerste opstart getest worden. Zo niet: level-shifter (NPN-transistor
-of 74HCT-buffer) tussen GPIO25 en de fan's PWM-pin.
+GPIO25/26 (oorspronkelijk gepland) zaten fysiek onbereikbaar op de breadboard-opstelling
+(board is bijna zo breed als de breadboard, alleen één pinrij is bereikbaar). Op die
+bereikbare rij: **CLK, D0, D1, CMD zijn de interne SPI-flash pins (GPIO6/7/8/11) — nooit
+gebruiken**, en RX/TX zijn de USB-serial pins — ook vermijden. GPIO2/15 zijn
+boot-strapping pins, kunnen wel maar liever vermeden. Vrije bruikbare pins op die rij:
+4, 16, 17, 5, 18, 19, 21, 22, 23 — GPIO18 (PWM) en GPIO19 (tach) gekozen.
+
+**Bevestigd (POC breadboard test)**: 3.3V ESP32-logic stuurt de fan's PWM-ingang prima
+aan, geen level-shifter nodig. On/off en variabele snelheid werken beide via HA. Tach
+geeft ~5000 RPM op volle snelheid, consistent met de Arctic P8 MAX-datasheet (de
+high-speed variant, i.t.t. de ~2000 RPM standaard P8).
 
 ## Home Assistant integratie
 
