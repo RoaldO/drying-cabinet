@@ -278,6 +278,8 @@ def protector_grill(
     bolt_hole_diameter: float = 3.2,
     bolt_corner_distance: float = 101.6 / 2,
     thickness: float = DEFAULT_WALL_THICKNESS,
+    wall_thickness: float = DEFAULT_WALL_THICKNESS,
+    wall_height: float = 10,
 ) -> Part:
     """Duct protector grill: a finger-guard mesh across the vent hole.
 
@@ -286,8 +288,10 @@ def protector_grill(
     hole open for airflow.
 
     Modeled here in its natural print orientation (this face down on the
-    bed). When inserted into the full assembly it gets rotated 180°
-    (flipped upside down), not mirrored, to sit on top of the duct.
+    bed): the finger-guard plate prints first, with a small perimeter
+    wall built up on top of it (in print direction). When inserted into
+    the full assembly it gets rotated 180° (flipped upside down, not
+    mirrored), so that wall ends up underneath, matching the duct's rim.
     """
     outer = rounded_square(width, corner_radius)
     profile = outer - Circle(hole_diameter / 2)
@@ -299,10 +303,56 @@ def protector_grill(
         for sign_y in (-1, 1):
             profile -= Pos(sign_x * corner_offset, sign_y * corner_offset) * bolt_hole
 
-    return extrude(profile, thickness)
+    plate = extrude(profile, thickness)
+    wall = Pos(0, 0, thickness) * rounded_square_wall(
+        width - 2 * wall_thickness, corner_radius, wall_thickness, wall_height
+    )
+    return plate + wall
 
 
-part = protector_grill()
+def dust_cover(
+    fit_over_width: float = 84,
+    fit_margin: float = 1.0,
+    corner_radius: float = 5,
+    thickness: float = DEFAULT_WALL_THICKNESS,
+    wall_thickness: float = DEFAULT_WALL_THICKNESS,
+    wall_height: float = 10,
+) -> Part:
+    """Solid plate + perimeter wall, sized to slip over the duct/grill
+    assembly (`fit_over_width`, its outer footprint) and cap it off when
+    the fan is idle, keeping dust out.
+
+    `fit_over_width` becomes the cover's inside dimension (plus
+    `fit_margin` clearance so it actually slides on/off) instead of its
+    outside one, so the whole shape grows outward from there.
+    """
+    cavity_width = fit_over_width + fit_margin
+    outer_width = cavity_width + 2 * wall_thickness
+    plate = extrude(rounded_square(outer_width, corner_radius), thickness)
+    wall = Pos(0, 0, thickness) * rounded_square_wall(
+        cavity_width, corner_radius, wall_thickness, wall_height
+    )
+    return plate + wall
+
+
+FLOAT_HEIGHT = 10  # mm, ~1cm gap between stacked preview parts
+
+
+def _stack_upside_down(part: Part, base_top: float, gap: float) -> Part:
+    flipped = Rot(180, 0, 0) * part
+    flipped_bottom = flipped.bounding_box().min.Z
+    return Pos(0, 0, base_top + gap - flipped_bottom) * flipped
+
+
+duct_assembly = duct_with_vent()
+duct_top = duct_assembly.bounding_box().max.Z
+
+grill = _stack_upside_down(protector_grill(), duct_top, FLOAT_HEIGHT)
+grill_top = grill.bounding_box().max.Z
+
+cover = _stack_upside_down(dust_cover(), grill_top, FLOAT_HEIGHT)
+
+part = duct_assembly
 
 if __name__ == "__main__":
-    show(part)
+    show(duct_assembly, grill, cover, colors=["gray", "orange", "blue"])
