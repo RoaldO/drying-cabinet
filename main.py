@@ -118,7 +118,21 @@ def fan_duct(
     return base + tube
 
 
-part = fan_duct()
+def rounded_square(width: float, corner_radius: float) -> Sketch:
+    return RectangleRounded(width, width, corner_radius)
+
+
+def vent_profile(
+    hole_diameter: float = 70,
+    outer_width: float = 85,
+    outer_radius: float = 5,
+) -> Sketch:
+    outer = rounded_square(outer_width, outer_radius)
+    hole = Circle(hole_diameter / 2)
+    return outer - hole
+
+
+part = vent_profile()
 
 if __name__ == "__main__":
     show(part)
