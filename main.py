@@ -335,6 +335,65 @@ def dust_cover(
     return plate + wall
 
 
+def support_ribs(width: float, height: float, rib_width: float, rib_gap: float) -> Sketch:
+    """Sparse parallel ribs spanning a `width` x `height` rectangle.
+
+    For holding something up (e.g. a filter) without blocking much
+    airflow -- no finger-safety spacing needed here, so the gaps can be
+    much wider than finger_guard_bars() uses.
+    """
+    clip = Rectangle(width, height)
+    bar = Rectangle(rib_width, height)
+    bars = [Pos(x, 0) * bar for x in _evenly_pitched(width, rib_width + rib_gap)]
+    return reduce(lambda a, b: a + b, bars) & clip
+
+
+def filter_enclosure(
+    inner_x: float = 80,
+    inner_y: float = 80,
+    border_width: float = 10,
+    outer_radius: float = 5,
+    hole_diameter: float = 4.0,  # M3 heat-insert press-fit diameter
+    holes_per_side: int = 3,
+    base_offset: float = DEFAULT_WALL_THICKNESS,
+    filter_thickness: float = 20,
+    rib_width: float = DEFAULT_WALL_THICKNESS,
+    rib_gap: float = 15,
+    seal_lip_thickness: float = 3,
+    seal_lip_height: float = DEFAULT_WALL_THICKNESS,
+) -> Part:
+    """Filter enclosure, printed in its regular (natural) orientation.
+
+    The space below base_offset is the filter's support base: a rounded
+    rectangle matching the flange's outer shape exactly, with the border
+    kept solid (sealing against the walls above so air can't bypass the
+    filter along the sides) and only the inner opening spanned by sparse
+    ribs (holds the filter up without blocking much airflow). A short
+    seal lip stands up right at the inner_x/inner_y boundary (where the
+    border meets the ribs) to block air from sneaking sideways between
+    the filter's edge and the border instead of through the filter.
+    Above that, the duct flange's 2D shape (with holes) is extruded
+    upward by filter_thickness (2cm) for this section.
+    """
+    outer_x = inner_x + 2 * border_width
+    outer_y = inner_y + 2 * border_width
+    border = RectangleRounded(outer_x, outer_y, outer_radius) - Rectangle(inner_x, inner_y)
+    ribs = support_ribs(inner_x, inner_y, rib_width, rib_gap)
+    base = extrude(border + ribs, base_offset)
+
+    seal_lip = Rectangle(inner_x, inner_y) - Rectangle(
+        inner_x - 2 * seal_lip_thickness, inner_y - 2 * seal_lip_thickness
+    )
+    base += Pos(0, 0, base_offset) * extrude(seal_lip, seal_lip_height)
+
+    profile = flange_profile(
+        inner_x, inner_y, border_width, outer_radius, hole_diameter, holes_per_side
+    )
+    walls = Pos(0, 0, base_offset) * extrude(profile, filter_thickness)
+
+    return base + walls
+
+
 FLOAT_HEIGHT = 10  # mm, ~1cm gap between stacked preview parts
 
 
@@ -352,7 +411,7 @@ grill_top = grill.bounding_box().max.Z
 
 cover = _stack_upside_down(dust_cover(), grill_top, FLOAT_HEIGHT)
 
-part = duct_assembly
+part = filter_enclosure()
 
 if __name__ == "__main__":
-    show(duct_assembly, grill, cover, colors=["gray", "orange", "blue"])
+    show(part)
