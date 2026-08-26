@@ -139,6 +139,17 @@ def vent_profile(
     return outer - hole
 
 
+def rounded_square_wall(
+    width: float = 85,
+    corner_radius: float = 5,
+    wall_thickness: float = DEFAULT_WALL_THICKNESS,
+    height: float = 10,
+) -> Part:
+    outer = rounded_square(width, corner_radius)
+    inner = offset(outer, -wall_thickness)
+    return extrude(outer - inner, height)
+
+
 def duct_transition(
     inner_x: float = 80,
     inner_y: float = 80,
@@ -194,6 +205,8 @@ def duct_with_vent(
     heat_insert_diameter: float = 4.0,
     heat_insert_depth: float = 5,
     heat_insert_corner_distance: float = 40,
+    rim_wall_thickness: float = DEFAULT_WALL_THICKNESS,
+    rim_height: float = 10,
 ) -> Part:
     duct_part = fan_duct(
         inner_x,
@@ -224,7 +237,10 @@ def duct_with_vent(
         heat_insert_depth,
         heat_insert_corner_distance,
     )
-    return duct_part + transition + plate
+    rim = Pos(0, 0, duct_top + vent_float_height + heat_insert_depth) * rounded_square_wall(
+        vent_outer_width, vent_outer_radius, rim_wall_thickness, rim_height
+    )
+    return duct_part + transition + plate + rim
 
 
 part = duct_with_vent()
