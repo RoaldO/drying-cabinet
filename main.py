@@ -80,16 +80,23 @@ def flange(
     return extrude(profile, thickness)
 
 
+def duct_profile(
+    inner_x: float = 80,
+    inner_y: float = 80,
+    wall_thickness: float = DEFAULT_WALL_THICKNESS,
+) -> Sketch:
+    outer_x = inner_x + 2 * wall_thickness
+    outer_y = inner_y + 2 * wall_thickness
+    return Rectangle(outer_x, outer_y) - Rectangle(inner_x, inner_y)
+
+
 def duct(
     inner_x: float = 80,
     inner_y: float = 80,
     wall_thickness: float = DEFAULT_WALL_THICKNESS,
     height: float = 5,
 ) -> Part:
-    outer_x = inner_x + 2 * wall_thickness
-    outer_y = inner_y + 2 * wall_thickness
-    profile = Rectangle(outer_x, outer_y) - Rectangle(inner_x, inner_y)
-    return extrude(profile, height)
+    return extrude(duct_profile(inner_x, inner_y, wall_thickness), height)
 
 
 def fan_duct(
@@ -132,7 +139,62 @@ def vent_profile(
     return outer - hole
 
 
-part = vent_profile()
+def duct_transition(
+    inner_x: float = 80,
+    inner_y: float = 80,
+    duct_wall_thickness: float = DEFAULT_WALL_THICKNESS,
+    vent_hole_diameter: float = 70,
+    vent_outer_width: float = 85,
+    vent_outer_radius: float = 5,
+    height: float = 20,
+) -> Part:
+    bottom = duct_profile(inner_x, inner_y, duct_wall_thickness)
+    top = Pos(0, 0, height) * vent_profile(
+        vent_hole_diameter, vent_outer_width, vent_outer_radius
+    )
+    return loft([bottom, top])
+
+
+def duct_with_vent(
+    inner_x: float = 80,
+    inner_y: float = 80,
+    border_width: float = 10,
+    outer_radius: float = 5,
+    hole_diameter: float = 3.2,
+    holes_per_side: int = 3,
+    flange_thickness: float = DEFAULT_WALL_THICKNESS,
+    duct_wall_thickness: float = DEFAULT_WALL_THICKNESS,
+    duct_height: float = 5,
+    vent_hole_diameter: float = 70,
+    vent_outer_width: float = 85,
+    vent_outer_radius: float = 5,
+    vent_float_height: float = 20,
+) -> Part:
+    duct_part = fan_duct(
+        inner_x,
+        inner_y,
+        border_width,
+        outer_radius,
+        hole_diameter,
+        holes_per_side,
+        flange_thickness,
+        duct_wall_thickness,
+        duct_height,
+    )
+    duct_top = flange_thickness + duct_height
+    transition = Pos(0, 0, duct_top) * duct_transition(
+        inner_x,
+        inner_y,
+        duct_wall_thickness,
+        vent_hole_diameter,
+        vent_outer_width,
+        vent_outer_radius,
+        vent_float_height,
+    )
+    return duct_part + transition
+
+
+part = duct_with_vent()
 
 if __name__ == "__main__":
     show(part)
