@@ -3,6 +3,8 @@ from functools import reduce
 from build123d import *
 from ocp_vscode import show
 
+DEFAULT_WALL_THICKNESS = 2  # mm, ~4 perimeters at a 0.5mm nozzle
+
 
 def _segment_centers(span: float, count: int) -> list[float]:
     """Center of each of `count` equal segments spanning [-span, span].
@@ -22,7 +24,14 @@ def flange_profile(
     outer_radius: float = 5,
     hole_diameter: float = 3.2,
     holes_per_side: int = 3,
+    hole_outward_offset: float = 0,
 ) -> Sketch:
+    """`hole_outward_offset` shifts the hole centerline toward the outer edge.
+
+    Needed when something (e.g. a duct wall) covers part of the border's
+    inner edge on one face, so the holes should center on the strip that's
+    actually visible/accessible there instead of on the full border width.
+    """
     outer_x = inner_x + 2 * border_width
     outer_y = inner_y + 2 * border_width
     outer = RectangleRounded(outer_x, outer_y, outer_radius)
@@ -31,8 +40,8 @@ def flange_profile(
 
     if holes_per_side > 0:
         hole_radius = hole_diameter / 2
-        mid_x = inner_x / 2 + border_width / 2
-        mid_y = inner_y / 2 + border_width / 2
+        mid_x = inner_x / 2 + border_width / 2 + hole_outward_offset
+        mid_y = inner_y / 2 + border_width / 2 + hole_outward_offset
         span_x = outer_x / 2 - outer_radius - hole_radius
         span_y = outer_y / 2 - outer_radius - hole_radius
 
@@ -49,7 +58,67 @@ def flange_profile(
     return frame
 
 
-part = flange_profile()
+def flange(
+    inner_x: float = 80,
+    inner_y: float = 80,
+    border_width: float = 10,
+    outer_radius: float = 5,
+    hole_diameter: float = 3.2,
+    holes_per_side: int = 3,
+    thickness: float = DEFAULT_WALL_THICKNESS,
+    hole_outward_offset: float = 0,
+) -> Part:
+    profile = flange_profile(
+        inner_x,
+        inner_y,
+        border_width,
+        outer_radius,
+        hole_diameter,
+        holes_per_side,
+        hole_outward_offset,
+    )
+    return extrude(profile, thickness)
+
+
+def duct(
+    inner_x: float = 80,
+    inner_y: float = 80,
+    wall_thickness: float = DEFAULT_WALL_THICKNESS,
+    height: float = 5,
+) -> Part:
+    outer_x = inner_x + 2 * wall_thickness
+    outer_y = inner_y + 2 * wall_thickness
+    profile = Rectangle(outer_x, outer_y) - Rectangle(inner_x, inner_y)
+    return extrude(profile, height)
+
+
+def fan_duct(
+    inner_x: float = 80,
+    inner_y: float = 80,
+    border_width: float = 10,
+    outer_radius: float = 5,
+    hole_diameter: float = 3.2,
+    holes_per_side: int = 3,
+    flange_thickness: float = DEFAULT_WALL_THICKNESS,
+    duct_wall_thickness: float = DEFAULT_WALL_THICKNESS,
+    duct_height: float = 5,
+) -> Part:
+    base = flange(
+        inner_x,
+        inner_y,
+        border_width,
+        outer_radius,
+        hole_diameter,
+        holes_per_side,
+        flange_thickness,
+        hole_outward_offset=duct_wall_thickness / 2,
+    )
+    tube = duct(inner_x, inner_y, duct_wall_thickness, duct_height)
+    tube = Pos(0, 0, flange_thickness) * tube
+    return base + tube
+
+
+part = fan_duct()
 
 if __name__ == "__main__":
     show(part)
