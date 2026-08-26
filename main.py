@@ -17,6 +17,14 @@ def _segment_centers(span: float, count: int) -> list[float]:
     return [-span + step * (i + 0.5) for i in range(count)]
 
 
+def _evenly_pitched(span: float, pitch: float) -> list[float]:
+    """Positions of bars tiling `span` at `pitch` spacing, centered on 0."""
+    count = int(span // pitch) + 1
+    covered = (count - 1) * pitch
+    start = -covered / 2
+    return [start + i * pitch for i in range(count)]
+
+
 def flange_profile(
     inner_x: float = 80,
     inner_y: float = 80,
@@ -246,14 +254,36 @@ def duct_with_vent(
     return duct_part + transition + plate + rim
 
 
+def finger_guard_bars(diameter: float, bar_width: float, bar_gap: float) -> Sketch:
+    """Parallel bars spanning a circle of `diameter`, clipped to that circle.
+
+    `bar_gap` is the clear opening between bars a fingertip could pass
+    through. 6mm is a common child-safety rule of thumb for finger-guard
+    openings (e.g. small-appliance/toy guidelines use openings in this
+    range to block a child's finger) -- worth checking against whatever
+    standard actually applies to this build before trusting it blindly.
+    """
+    circle = Circle(diameter / 2)
+    bar = Rectangle(bar_width, diameter)
+    bars = [Pos(x, 0) * bar for x in _evenly_pitched(diameter, bar_width + bar_gap)]
+    return reduce(lambda a, b: a + b, bars) & circle
+
+
 def protector_grill(
     width: float = 84,
     corner_radius: float = 5,
     hole_diameter: float = 76,
+    bar_width: float = DEFAULT_WALL_THICKNESS,
+    bar_gap: float = 6,
     bolt_hole_diameter: float = 3.2,
     bolt_corner_distance: float = 101.6 / 2,
-) -> Sketch:
-    """Duct protector grill, base shape only for now.
+    thickness: float = DEFAULT_WALL_THICKNESS,
+) -> Part:
+    """Duct protector grill: a finger-guard mesh across the vent hole.
+
+    Straight parallel bars keep it easy to print (uniform cross-section,
+    no overhangs in its natural orientation) while leaving most of the
+    hole open for airflow.
 
     Modeled here in its natural print orientation (this face down on the
     bed). When inserted into the full assembly it gets rotated 180°
@@ -261,6 +291,7 @@ def protector_grill(
     """
     outer = rounded_square(width, corner_radius)
     profile = outer - Circle(hole_diameter / 2)
+    profile += finger_guard_bars(hole_diameter, bar_width, bar_gap)
 
     bolt_hole = Circle(bolt_hole_diameter / 2)
     corner_offset = bolt_corner_distance / 2**0.5
@@ -268,7 +299,7 @@ def protector_grill(
         for sign_y in (-1, 1):
             profile -= Pos(sign_x * corner_offset, sign_y * corner_offset) * bolt_hole
 
-    return profile
+    return extrude(profile, thickness)
 
 
 part = protector_grill()
