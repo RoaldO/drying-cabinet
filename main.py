@@ -130,7 +130,7 @@ def rounded_square(width: float, corner_radius: float) -> Sketch:
 
 
 def vent_profile(
-    hole_diameter: float = 70,
+    hole_diameter: float = 76,
     outer_width: float = 85,
     outer_radius: float = 5,
 ) -> Sketch:
@@ -155,7 +155,7 @@ def duct_transition(
     inner_x: float = 80,
     inner_y: float = 80,
     duct_wall_thickness: float = DEFAULT_WALL_THICKNESS,
-    vent_hole_diameter: float = 70,
+    vent_hole_diameter: float = 76,
     vent_outer_width: float = 85,
     vent_outer_radius: float = 5,
     height: float = 20,
@@ -170,10 +170,10 @@ def duct_transition(
 def heat_insert_plate(
     vent_outer_width: float = 85,
     vent_outer_radius: float = 5,
-    vent_hole_diameter: float = 70,
+    vent_hole_diameter: float = 76,
     heat_insert_diameter: float = 4.0,
     heat_insert_depth: float = 5,
-    heat_insert_corner_distance: float = 40,
+    heat_insert_corner_distance: float = 101.6 / 2,
 ) -> Part:
     """Rounded-square plate with the vent hole plus one M3 heat-insert hole
     per corner (5 cylinders removed in total), extruded to the insert depth.
@@ -199,12 +199,12 @@ def duct_with_vent(
     flange_thickness: float = DEFAULT_WALL_THICKNESS,
     duct_wall_thickness: float = DEFAULT_WALL_THICKNESS,
     duct_height: float = 5,
-    vent_hole_diameter: float = 70,
+    vent_hole_diameter: float = 76,
     vent_outer_radius: float = 5,
     vent_float_height: float = 20,
     heat_insert_diameter: float = 4.0,
     heat_insert_depth: float = 5,
-    heat_insert_corner_distance: float = 40,
+    heat_insert_corner_distance: float = 101.6 / 2,
     rim_inner_width: float = 80,
     rim_wall_thickness: float = DEFAULT_WALL_THICKNESS,
     rim_height: float = 10,
@@ -246,7 +246,32 @@ def duct_with_vent(
     return duct_part + transition + plate + rim
 
 
-part = duct_with_vent()
+def protector_grill(
+    width: float = 84,
+    corner_radius: float = 5,
+    hole_diameter: float = 76,
+    bolt_hole_diameter: float = 3.2,
+    bolt_corner_distance: float = 101.6 / 2,
+) -> Sketch:
+    """Duct protector grill, base shape only for now.
+
+    Modeled here in its natural print orientation (this face down on the
+    bed). When inserted into the full assembly it gets rotated 180°
+    (flipped upside down), not mirrored, to sit on top of the duct.
+    """
+    outer = rounded_square(width, corner_radius)
+    profile = outer - Circle(hole_diameter / 2)
+
+    bolt_hole = Circle(bolt_hole_diameter / 2)
+    corner_offset = bolt_corner_distance / 2**0.5
+    for sign_x in (-1, 1):
+        for sign_y in (-1, 1):
+            profile -= Pos(sign_x * corner_offset, sign_y * corner_offset) * bolt_hole
+
+    return profile
+
+
+part = protector_grill()
 
 if __name__ == "__main__":
     show(part)
