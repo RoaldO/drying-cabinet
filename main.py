@@ -336,15 +336,21 @@ def dust_cover(
 
 
 def support_ribs(width: float, height: float, rib_width: float, rib_gap: float) -> Sketch:
-    """Sparse parallel ribs spanning a `width` x `height` rectangle.
+    """Sparse crossed grid of ribs spanning a `width` x `height` rectangle.
 
     For holding something up (e.g. a filter) without blocking much
     airflow -- no finger-safety spacing needed here, so the gaps can be
-    much wider than finger_guard_bars() uses.
+    much wider than finger_guard_bars() uses. Ribs run both directions
+    (rather than just one) so the blockage is spread evenly across the
+    area instead of leaving long open channels that jet air through in
+    streaks -- important right before a filter feeding an airbrush
+    cabinet, where an even flow matters more than a lower pressure drop.
     """
     clip = Rectangle(width, height)
-    bar = Rectangle(rib_width, height)
-    bars = [Pos(x, 0) * bar for x in _evenly_pitched(width, rib_width + rib_gap)]
+    x_bar = Rectangle(rib_width, height)
+    y_bar = Rectangle(width, rib_width)
+    bars = [Pos(x, 0) * x_bar for x in _evenly_pitched(width, rib_width + rib_gap)]
+    bars += [Pos(0, y) * y_bar for y in _evenly_pitched(height, rib_width + rib_gap)]
     return reduce(lambda a, b: a + b, bars) & clip
 
 
