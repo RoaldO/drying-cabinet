@@ -155,6 +155,28 @@ def duct_transition(
     return loft([bottom, top])
 
 
+def heat_insert_plate(
+    vent_outer_width: float = 85,
+    vent_outer_radius: float = 5,
+    vent_hole_diameter: float = 70,
+    heat_insert_diameter: float = 4.0,
+    heat_insert_depth: float = 5,
+    heat_insert_corner_distance: float = 40,
+) -> Part:
+    """Rounded-square plate with the vent hole plus one M3 heat-insert hole
+    per corner (5 cylinders removed in total), extruded to the insert depth.
+    """
+    profile = rounded_square(vent_outer_width, vent_outer_radius) - Circle(
+        vent_hole_diameter / 2
+    )
+    insert = Circle(heat_insert_diameter / 2)
+    corner_offset = heat_insert_corner_distance / 2**0.5
+    for sign_x in (-1, 1):
+        for sign_y in (-1, 1):
+            profile -= Pos(sign_x * corner_offset, sign_y * corner_offset) * insert
+    return extrude(profile, heat_insert_depth)
+
+
 def duct_with_vent(
     inner_x: float = 80,
     inner_y: float = 80,
@@ -169,6 +191,9 @@ def duct_with_vent(
     vent_outer_width: float = 85,
     vent_outer_radius: float = 5,
     vent_float_height: float = 20,
+    heat_insert_diameter: float = 4.0,
+    heat_insert_depth: float = 5,
+    heat_insert_corner_distance: float = 40,
 ) -> Part:
     duct_part = fan_duct(
         inner_x,
@@ -191,7 +216,15 @@ def duct_with_vent(
         vent_outer_radius,
         vent_float_height,
     )
-    return duct_part + transition
+    plate = Pos(0, 0, duct_top + vent_float_height) * heat_insert_plate(
+        vent_outer_width,
+        vent_outer_radius,
+        vent_hole_diameter,
+        heat_insert_diameter,
+        heat_insert_depth,
+        heat_insert_corner_distance,
+    )
+    return duct_part + transition + plate
 
 
 part = duct_with_vent()
