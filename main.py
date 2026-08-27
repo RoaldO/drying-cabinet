@@ -427,6 +427,33 @@ def flange_cutting_template(
     )
 
 
+def flange_gasket(
+    inner_x: float = 80,
+    inner_y: float = 80,
+    border_width: float = 10,
+    outer_radius: float = 5,
+    hole_diameter: float = 2.8,  # a touch under M3 (3.0mm) so the TPU grips the bolt thread
+    holes_per_side: int = 3,
+    duct_wall_thickness: float = DEFAULT_WALL_THICKNESS,
+    thickness: float = 1.5,
+) -> Part:
+    """TPU gasket sandwiched between the filter enclosure's and duct's
+    flanges. Same outline and 12 M3 hole positions as the mounted flange
+    (see flange_cutting_template()), but hole_diameter is a bit smaller
+    than the bolt so the TPU grips the thread for a better seal.
+    """
+    return flange(
+        inner_x,
+        inner_y,
+        border_width,
+        outer_radius,
+        hole_diameter,
+        holes_per_side,
+        thickness,
+        hole_outward_offset=duct_wall_thickness / 2,
+    )
+
+
 FLOAT_HEIGHT = 10  # mm, ~1cm gap between stacked preview parts
 
 
@@ -442,7 +469,10 @@ filter_top = filter_part.bounding_box().max.Z
 template = Pos(0, 0, filter_top + FLOAT_HEIGHT) * flange_cutting_template()
 template_top = template.bounding_box().max.Z
 
-duct_assembly = Pos(0, 0, template_top + FLOAT_HEIGHT) * duct_with_vent()
+gasket = Pos(0, 0, template_top + FLOAT_HEIGHT) * flange_gasket()
+gasket_top = gasket.bounding_box().max.Z
+
+duct_assembly = Pos(0, 0, gasket_top + FLOAT_HEIGHT) * duct_with_vent()
 duct_top = duct_assembly.bounding_box().max.Z
 
 grill = _stack_upside_down(protector_grill(), duct_top, FLOAT_HEIGHT)
@@ -456,8 +486,9 @@ if __name__ == "__main__":
     show(
         filter_part,
         template,
+        gasket,
         duct_assembly,
         grill,
         cover,
-        colors=["green", "red", "gray", "orange", "blue"],
+        colors=["green", "red", "purple", "gray", "orange", "blue"],
     )
