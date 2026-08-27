@@ -18,18 +18,34 @@ ESPHome native API (encrypted, auto-discovery) — geen MQTT-broker nodig.
 - **MCU**: AZDelivery ESP-32 Dev Kit C V4 — ESP32-WROOM-32 module, 512KB RAM.
   ESPHome board type: `esp32dev`.
 - **Fan**: Arctic P8 Max, 4-pin PWM (GND, 12V, PWM-in, Tach-out).
-- **Voeding**: gescheiden voedingen i.p.v. gedeelde breadboard PSU (die bleek 15V/9V/5V,
-  geen 12V) — ESP32 op USB, fan op generieke laptopvoeding 12.25V/1A (gemeten, zakt
-  onbelast/belast nauwelijks: 12.25V → 12.22V). GND's van beide voedingen verbonden.
+- **Voeding**: één 12V-bron voedt alles. Generieke laptopvoeding 12.25V/1A (gemeten, zakt
+  onbelast/belast nauwelijks: 12.25V → 12.22V). Vanaf de brick: PTC-polyfuse in de +12V-lijn
+  vóór het splitspunt (**Bourns MF-R110**: 1.1A hold / 2.2A trip, 30V, radiaal THT — soldeert
+  direct op de print, herstelt na afkoelen). Daarna splitsen naar (a) de fan rechtstreeks
+  op 12V en (b) een step-down naar 5V voor de ESP32. Steady-state ~0.45A (fan ~0.2A + buck-in
+  ~0.25A), ruim onder de hold-stroom.
+  - Step-down: **Recom R-78B5.0-1.5** (7805-pinout, gesealed, kortsluit- + thermische
+    beveiliging, in tot 32V, uit 5V/1.5A). Geen trimpot om verkeerd te zetten. 5V-uitgang
+    naar de ESP32 `5V`/`VIN`-pin; de onboard AMS1117 maakt daar 3.3V van.
+  - Historie: eerdere opzet was gescheiden voedingen (ESP32 op USB, fan op 12V) omdat de
+    breadboard-PSU 15V/9V/5V bleek te geven i.p.v. 12V. Sensoren zijn uitgesteld (zie
+    Buiten scope), dus een gescheiden 5V-tak voor sensoren is niet meer nodig en de opzet
+    gaat terug naar één voeding.
+  - **USB-flashen**: het board heeft geen scheidingsdiode tussen USB-5V en de 5V-pin.
+    OTA is draadloos en dus geen probleem; bij een USB-flash eerst de buck-5V loskoppelen
+    zodat twee 5V-bronnen niet tegen elkaar werken.
 
 ## Bekabeling
 
 | Signaal | Van | Naar | Opmerking |
 |---|---|---|---|
-| Fan 12V+ / GND | 12V bron | Fan | Rechtstreeks, niet via ESP32 |
+| 12V brick + | brick | MF-R110 → splitspunt | PTC-polyfuse Bourns MF-R110 in de +12V-lijn vóór het splitspunt |
+| Fan 12V+ / GND | splitspunt | Fan | Rechtstreeks, niet via ESP32 |
+| Buck in | splitspunt | Recom R-78B5.0-1.5 (Vin) | 12V |
+| Buck uit | Recom R-78B5.0-1.5 (Vout) | ESP32 `5V`/`VIN`-pin | 5V; onboard AMS1117 maakt 3.3V |
 | Fan PWM-in | ESP32 GPIO18 | Fan | LEDC output, 25kHz |
 | Fan Tach-out | Fan | ESP32 GPIO19 | Open-collector, interne pull-up in ESPHome |
-| ESP32 | USB | ESP32 | ESP32 en 12V-fanvoeding zijn gescheiden voedingen; GND's onderling verbonden |
+| GND | brick − | fan GND, buck GND, ESP32 GND | Eén gemeenschappelijke massa |
 
 GPIO25/26 (oorspronkelijk gepland) zaten fysiek onbereikbaar op de breadboard-opstelling
 (board is bijna zo breed als de breadboard, alleen één pinrij is bereikbaar). Op die
@@ -76,9 +92,33 @@ cleanaircabinet/
 
 ## Buiten scope (later, lagere prio)
 
-- Temperatuur/RH-sensor (bv. SHT31 of BME280, I2C)
-- Luchtkwaliteitssensor (bv. BME680, SGP30, of PMS5003)
+- Temperatuur/RH-sensor (bv. SHT4x, I2C)
+- Luchtkwaliteitssensor: stofdeeltjes (PMS5003, UART — 3.3V-logic, geen level-shifter) en
+  eventueel VOC/oplosmiddelen (SGP40, I2C)
 - Lokale fysieke bediening (knop/potmeter op de cabinet) — nu bewust MVP-only via HA
 
-Deze worden later toegevoegd als extra ESPHome componenten in dezelfde YAML, op een
-gedeelde I2C-bus, in een aparte iteratie met eigen review.
+### Waarom sensoren nog uitgesteld zijn
+
+De cabine droogt geverfde en soms gelijmde onderdelen; de lucht bevat oplosmiddel-damp en
+tijdens de beginfase verf-aerosol. Dat is een probleem voor elke voorgestelde sensor:
+
+- **RH (SHT4x)**: polymeer-vochtsensoren driften door VOC-blootstelling. SHT4x herstelt
+  grotendeels (reversibel + bake-procedure), maar aanhoudende damp degradeert 'm. Vereist
+  de PTFE-membraanversie en montage buiten de directe overspray.
+- **VOC (SGP40)**: geeft een adaptieve VOC-index (0–500), geen absolute waarde — het
+  algoritme her-ijkt naar ~100, dus het meet veranderingen, niet "damp nog aanwezig
+  ja/nee". Het MOX-element wordt bovendien permanent vergiftigd door silicoenen (mogelijk
+  in lijm/kit). Operating range 0–50°C.
+- **PM (PMS5003 / SPS30)**: verf-aerosol slibt de optische kamer en de interne fan dicht.
+  Levensduur wordt dan een slijtdeel. Duty-cyclen via de sleep-pin en alleen ná een purge
+  meten, of filteren.
+
+Randvoorwaarde die dit oplost: elektronica en sensoren **buiten** de cabine monteren met
+alleen gefilterde meetpunten naar binnen — dat dekt meteen het temp-bereik van de SGP40 en
+condensatie op de PCB's. Wordt uitgewerkt in een aparte iteratie met eigen review; open
+vragen: wordt de cabine verwarmd (en hoe warm), watergedragen of oplosmiddel-verf, en
+silicone-houdende lijm ja/nee.
+
+Toevoeging gebeurt als extra ESPHome componenten in dezelfde YAML: I2C-bus op GPIO21/22
+(SHT4x 0x44 + SGP40 0x59), PMS5003 op UART1 (RX GPIO16, optioneel TX GPIO17). Sensoren van
+de 5V-rail voeden, niet van de 3V3-pin.
