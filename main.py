@@ -400,6 +400,33 @@ def filter_enclosure(
     return base + walls
 
 
+def flange_cutting_template(
+    inner_x: float = 80,
+    inner_y: float = 80,
+    border_width: float = 10,
+    outer_radius: float = 5,
+    hole_diameter: float = 3.2,
+    holes_per_side: int = 3,
+    thickness: float = DEFAULT_WALL_THICKNESS,
+    duct_wall_thickness: float = DEFAULT_WALL_THICKNESS,
+) -> Part:
+    """Cutting template ('snijmal') for marking the flange's outline and
+    screw holes onto an enclosure wall. Same shape, screw-hole positions
+    (including the hole_outward_offset the duct wall causes on the real
+    mounted flange) and thickness as flange() itself.
+    """
+    return flange(
+        inner_x,
+        inner_y,
+        border_width,
+        outer_radius,
+        hole_diameter,
+        holes_per_side,
+        thickness,
+        hole_outward_offset=duct_wall_thickness / 2,
+    )
+
+
 FLOAT_HEIGHT = 10  # mm, ~1cm gap between stacked preview parts
 
 
@@ -412,7 +439,10 @@ def _stack_upside_down(part: Part, base_top: float, gap: float) -> Part:
 filter_part = filter_enclosure()
 filter_top = filter_part.bounding_box().max.Z
 
-duct_assembly = Pos(0, 0, filter_top + FLOAT_HEIGHT) * duct_with_vent()
+template = Pos(0, 0, filter_top + FLOAT_HEIGHT) * flange_cutting_template()
+template_top = template.bounding_box().max.Z
+
+duct_assembly = Pos(0, 0, template_top + FLOAT_HEIGHT) * duct_with_vent()
 duct_top = duct_assembly.bounding_box().max.Z
 
 grill = _stack_upside_down(protector_grill(), duct_top, FLOAT_HEIGHT)
@@ -423,4 +453,11 @@ cover = _stack_upside_down(dust_cover(), grill_top, FLOAT_HEIGHT)
 part = filter_part
 
 if __name__ == "__main__":
-    show(filter_part, duct_assembly, grill, cover, colors=["green", "gray", "orange", "blue"])
+    show(
+        filter_part,
+        template,
+        duct_assembly,
+        grill,
+        cover,
+        colors=["green", "red", "gray", "orange", "blue"],
+    )
