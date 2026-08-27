@@ -213,7 +213,7 @@ def duct_with_vent(
     heat_insert_diameter: float = 4.0,
     heat_insert_depth: float = 5,
     heat_insert_corner_distance: float = 101.6 / 2,
-    rim_inner_width: float = 80,
+    rim_inner_width: float = 81,  # 1mm extra fan clearance
     rim_wall_thickness: float = DEFAULT_WALL_THICKNESS,
     rim_height: float = 10,
 ) -> Part:
@@ -270,7 +270,7 @@ def finger_guard_bars(diameter: float, bar_width: float, bar_gap: float) -> Sket
 
 
 def protector_grill(
-    width: float = 84,
+    width: float = 85,  # matches the rim's new outer size (81mm inner + 2x wall)
     corner_radius: float = 5,
     hole_diameter: float = 76,
     bar_width: float = DEFAULT_WALL_THICKNESS,
@@ -311,7 +311,7 @@ def protector_grill(
 
 
 def dust_cover(
-    fit_over_width: float = 84,
+    fit_over_width: float = 85,  # matches the grill's new outer size
     fit_margin: float = 1.0,
     corner_radius: float = 5,
     thickness: float = DEFAULT_WALL_THICKNESS,
@@ -409,7 +409,10 @@ def _stack_upside_down(part: Part, base_top: float, gap: float) -> Part:
     return Pos(0, 0, base_top + gap - flipped_bottom) * flipped
 
 
-duct_assembly = duct_with_vent()
+filter_part = filter_enclosure()
+filter_top = filter_part.bounding_box().max.Z
+
+duct_assembly = Pos(0, 0, filter_top + FLOAT_HEIGHT) * duct_with_vent()
 duct_top = duct_assembly.bounding_box().max.Z
 
 grill = _stack_upside_down(protector_grill(), duct_top, FLOAT_HEIGHT)
@@ -417,7 +420,7 @@ grill_top = grill.bounding_box().max.Z
 
 cover = _stack_upside_down(dust_cover(), grill_top, FLOAT_HEIGHT)
 
-part = filter_enclosure()
+part = filter_part
 
 if __name__ == "__main__":
-    show(part)
+    show(filter_part, duct_assembly, grill, cover, colors=["green", "gray", "orange", "blue"])
