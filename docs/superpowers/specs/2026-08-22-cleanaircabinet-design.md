@@ -25,8 +25,10 @@ ESPHome native API (encrypted, auto-discovery) — geen MQTT-broker nodig.
   op 12V en (b) een step-down naar 5V voor de ESP32. Steady-state ~0.45A (fan ~0.2A + buck-in
   ~0.25A), ruim onder de hold-stroom.
   - Step-down: **Recom R-78B5.0-1.5** (7805-pinout, gesealed, kortsluit- + thermische
-    beveiliging, in tot 32V, uit 5V/1.5A). Geen trimpot om verkeerd te zetten. 5V-uitgang
-    naar de ESP32 `5V`/`VIN`-pin; de onboard AMS1117 maakt daar 3.3V van.
+    beveiliging, in 6.5–18VDC, uit 5V/1.5A). 12.25V-brick zit ruim binnen bereik. Geen
+    trimpot om verkeerd te zetten. 5V-uitgang naar de ESP32 `5V`/`VIN`-pin; de onboard
+    AMS1117 maakt daar 3.3V van. Meer marge nodig (andere brick later)? R-78B5.0-2.0 —
+    2A én 6.5–32V in, zelfde SIP3-footprint.
   - Historie: eerdere opzet was gescheiden voedingen (ESP32 op USB, fan op 12V) omdat de
     breadboard-PSU 15V/9V/5V bleek te geven i.p.v. 12V. Sensoren zijn uitgesteld (zie
     Buiten scope), dus een gescheiden 5V-tak voor sensoren is niet meer nodig en de opzet
@@ -34,6 +36,9 @@ ESPHome native API (encrypted, auto-discovery) — geen MQTT-broker nodig.
   - **USB-flashen**: het board heeft geen scheidingsdiode tussen USB-5V en de 5V-pin.
     OTA is draadloos en dus geen probleem; bij een USB-flash eerst de buck-5V loskoppelen
     zodat twee 5V-bronnen niet tegen elkaar werken.
+  - Bestellen (beide bij TME, geen minimum orderbedrag):
+    - R-78B5.0-1.5: <https://www.tme.eu/en/details/r-78b5.0-1.5/dc-dc-converters/recom/>
+    - MF-R110: <https://www.tme.eu/en/details/mf-r110/tht-polymer-fuses/bourns/>
 
 ## Bekabeling
 
