@@ -2,3 +2,17 @@ secrets.yaml
 .esphome/
 .vscode/
 __pycache__/
+
+# KiCad
+*.bak
+*-backups/
+fp-info-cache
+*.kicad_prl
+
+# KiCad fabrication outputs (regenerate from .kicad_pcb)
+*.gbr
+*.gbrjob
+*.drl
+
+# Vendor library download archives (SnapEDA / UltraLibrarian source)
+*.zip
