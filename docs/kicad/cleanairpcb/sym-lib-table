@@ -1,6 +1,0 @@
-(sym_lib_table
-  (version 7)
-  (lib (name "MF-R110")(type "KiCad")(uri "/home/roald/Projects/cleanaircabinet/2026-09-02_08-08-44.kicad_sym")(options "")(descr ""))
-  (lib (name "R-78B5.0-1.5")(type "KiCad")(uri "/home/roald/Projects/cleanaircabinet/R-78B5.0-1.5.kicad_sym")(options "")(descr ""))
-  (lib (name "project")(type "KiCad")(uri "${KIPRJMOD}/project.kicad_sym")(options "")(descr ""))
-)
