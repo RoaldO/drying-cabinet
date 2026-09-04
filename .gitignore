@@ -1,5 +1,26 @@
+# Python / CAD (cad/)
 .venv/
 __pycache__/
 *.stl
-*.step
 *.3mf
+/cad/*.step
+
+# Firmware (ESPHome, firmware/)
+.esphome/
+secrets.yaml
+firmware/secrets.yaml
+
+# KiCad (pcb/)
+*.bak
+*-backups/
+fp-info-cache
+*.kicad_prl
+*.gbr
+*.gbrjob
+*.drl
+
+# Editors
+.vscode/
+
+# Vendor library archives (SnapEDA / UltraLibrarian)
+*.zip

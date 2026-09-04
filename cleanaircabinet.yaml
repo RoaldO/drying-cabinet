@@ -1,0 +1,53 @@
+esphome:
+  name: cleanaircabinet
+  friendly_name: Clean Air Cabinet
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+logger:
+
+# --- Fan control (Arctic P8 Max, 4-pin PWM + tach) ---
+# 3.3V logic on GPIO18 reliably triggers the fan's PWM input, confirmed on breadboard.
+output:
+  - platform: ledc
+    pin: GPIO18
+    id: pwm_output
+    frequency: 25000 Hz
+
+fan:
+  - platform: speed
+    output: pwm_output
+    name: "Cabinet Fan"
+    id: cabinet_fan
+
+# Tach pin is open-collector: needs a pull-up, enabled here internally.
+# Most PC/case fans emit 2 pulses per revolution -> divide pulses/min by 2 for RPM.
+sensor:
+  - platform: pulse_meter
+    pin:
+      number: GPIO19
+      mode:
+        input: true
+        pullup: true
+    unit_of_measurement: "RPM"
+    name: "Cabinet Fan Speed"
+    id: fan_tach
+    accuracy_decimals: 0
+    filters:
+      - multiply: 0.5
+      - throttle: 10s
